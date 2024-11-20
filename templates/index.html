@@ -6,6 +6,7 @@
     <title>JayCloud - Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='images/logo.webp') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha384-k6LoYVVsCnY6x3F1G9b4e/FwZs6VnJy3xFq6KzBUEK6a69ZLZr9A1iZsL5sBkJc" crossorigin="anonymous">
 </head>
 <body>
     <header>
@@ -42,8 +43,13 @@
         <section id="upload-section" class="upload-section">
             <div class="container">
                 <h2>Upload Your Files</h2>
-                <input type="file" id="fileInput">
-                <button id="uploadBtn">Upload</button>
+                <div class="upload-container">
+                    <label for="fileInput" class="custom-file-upload">
+                        <i class="fa fa-cloud-upload"></i> Select File
+                    </label>
+                    <input type="file" id="fileInput">
+                    <button id="uploadBtn" class="btn upload-btn">Upload</button>
+                </div>
                 <div id="status"></div>
             </div>
         </section>
