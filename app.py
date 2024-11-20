@@ -1,9 +1,11 @@
-from flask import Flask, render_template, request, session, jsonify
+from flask import Flask, render_template, request, session, jsonify, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 import os
 import hashlib
 import secrets
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto import Random
@@ -15,6 +17,11 @@ app.secret_key = 'your_secret_key'  # Replace with your actual secret key
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///jaycloud.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+# Initialize Login Manager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
 
 # Configure upload folder
 UPLOAD_FOLDER = 'uploads'
@@ -60,17 +67,76 @@ def convergent_encrypt(file_stream):
     return encrypted_data
 
 # Database models
+class User(UserMixin, db.Model):
+    """Database model for users."""
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), nullable=False, unique=True)
+    password = db.Column(db.String(150), nullable=False)
+    files = db.relationship('File', backref='owner', lazy=True)
+
 class File(db.Model):
     """Database model for uploaded files."""
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(256))
-    file_hash = db.Column(db.String(64), unique=True, nullable=False)
+    file_hash = db.Column(db.String(64), nullable=False)
     upload_time = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):
         return f'<File {self.filename}>'
 
+@login_manager.user_loader
+def load_user(user_id):
+    """Load user for Flask-Login."""
+    return User.query.get(int(user_id))
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """User registration page."""
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        # Check if user already exists
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash('Username already exists. Please choose a different one.')
+            return redirect(url_for('register'))
+        # Create new user
+        hashed_password = generate_password_hash(password, method='sha256')
+        new_user = User(username=username, password=hashed_password)
+        db.session.add(new_user)
+        db.session.commit()
+        flash('Registration successful! Please log in.')
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login page."""
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        # Authenticate user
+        user = User.query.filter_by(username=username).first()
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            flash('Login successful!')
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid username or password.')
+            return redirect(url_for('login'))
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    """User logout."""
+    logout_user()
+    flash('You have been logged out.')
+    return redirect(url_for('login'))
+
 @app.route('/api/get_challenge', methods=['GET'])
+@login_required
 def get_challenge():
     """
     API Endpoint: Get a new challenge for Proof of Work.
@@ -80,6 +146,7 @@ def get_challenge():
     return jsonify({'challenge': challenge})
 
 @app.route('/api/upload', methods=['POST'])
+@login_required
 def upload_file():
     """
     API Endpoint: Handle file uploads.
@@ -98,18 +165,21 @@ def upload_file():
         file_hash = hashlib.sha256(encrypted_data).hexdigest()
         file_path = os.path.join(UPLOAD_FOLDER, file_hash)
         if os.path.exists(file_path):
-            # File already exists; update database if necessary
-            existing_file = File.query.filter_by(file_hash=file_hash).first()
-            if not existing_file:
-                new_file = File(filename=uploaded_file.filename, file_hash=file_hash)
+            # File already exists; check if user has uploaded it before
+            existing_file = File.query.filter_by(file_hash=file_hash, user_id=current_user.id).first()
+            if existing_file:
+                return jsonify({'status': 'success', 'message': 'File already exists in your account. Fast upload successful!'})
+            else:
+                # Associate existing file with user
+                new_file = File(filename=uploaded_file.filename, file_hash=file_hash, user_id=current_user.id)
                 db.session.add(new_file)
                 db.session.commit()
-            return jsonify({'status': 'success', 'message': 'File already exists. Fast upload successful!'})
+                return jsonify({'status': 'success', 'message': 'File uploaded and associated with your account!'})
         else:
             with open(file_path, 'wb') as f:
                 f.write(encrypted_data)
             # Add file metadata to the database
-            new_file = File(filename=uploaded_file.filename, file_hash=file_hash)
+            new_file = File(filename=uploaded_file.filename, file_hash=file_hash, user_id=current_user.id)
             db.session.add(new_file)
             db.session.commit()
             return jsonify({'status': 'success', 'message': 'File uploaded and encrypted successfully!'})
@@ -117,12 +187,13 @@ def upload_file():
         return jsonify({'status': 'error', 'message': 'Invalid file or file type'}), 400
 
 @app.route('/files', methods=['GET'])
+@login_required
 def list_files():
     """
-    API Endpoint: List all uploaded files.
+    API Endpoint: List all uploaded files for the current user.
     Returns a JSON object containing file metadata.
     """
-    files = File.query.order_by(File.upload_time.desc()).all()
+    files = File.query.filter_by(user_id=current_user.id).order_by(File.upload_time.desc()).all()
     files_data = [{
         'filename': file.filename,
         'file_hash': file.file_hash,
@@ -131,6 +202,7 @@ def list_files():
     return jsonify({'status': 'success', 'files': files_data})
 
 @app.route('/', methods=['GET'])
+@login_required
 def index():
     """Render the main page."""
     return render_template('index.html')

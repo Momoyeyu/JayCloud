@@ -1,26 +1,94 @@
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f5f7fa;
-    color: #333;
+/* Reset styles */
+* {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
 }
 
-.container {
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+}
+
+/* Header styling */
+header {
+    background-color: #4a90e2;
+    color: #fff;
+    padding: 20px 0;
+}
+
+header .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.logo {
+    height: 50px;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+}
+
+nav li {
+    margin-left: 20px;
+}
+
+nav a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+/* Hero section */
+.hero {
+    background-color: #e9eef5;
+    padding: 60px 0;
     text-align: center;
-    padding: 50px;
 }
 
-h1 {
-    color: #4a90e2;
+.hero h2 {
+    font-size: 36px;
+    margin-bottom: 20px;
 }
 
+.hero p {
+    font-size: 18px;
+    margin-bottom: 30px;
+}
+
+.btn {
+    background-color: #4a90e2;
+    color: #fff;
+    padding: 15px 30px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 18px;
+}
+
+.btn:hover {
+    background-color: #357ab7;
+}
+
+/* Upload section */
 .upload-section {
-    margin-top: 30px;
+    padding: 60px 0;
+    background-color: #fff;
+    text-align: center;
 }
 
-.files-section {
-    margin-top: 50px;
+.upload-section h2 {
+    font-size: 28px;
+    margin-bottom: 20px;
 }
 
 #fileInput {
@@ -32,27 +100,27 @@ h1 {
     font-weight: bold;
 }
 
-button {
-    background-color: #4a90e2;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    cursor: pointer;
+/* Files section */
+.files-section {
+    padding: 60px 0;
+    background-color: #f9fafc;
 }
 
-button:hover {
-    background-color: #357ab7;
+.files-section h2 {
+    font-size: 28px;
+    margin-bottom: 20px;
 }
 
 table {
     margin: 0 auto;
     border-collapse: collapse;
-    width: 60%;
+    width: 80%;
 }
 
 th, td {
     border: 1px solid #ddd;
-    padding: 8px;
+    padding: 12px;
+    text-align: left;
 }
 
 th {
@@ -66,4 +134,78 @@ tr:nth-child(even) {
 
 tr:hover {
     background-color: #ddd;
+}
+
+/* Footer styling */
+footer {
+    background-color: #333;
+    color: #fff;
+    padding: 20px 0;
+    text-align: center;
+}
+
+/* Responsive styling */
+@media (max-width: 768px) {
+    header .container, .hero .container, .upload-section .container, .files-section .container {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    nav ul {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    nav li {
+        margin: 10px 0;
+    }
+
+    table {
+        width: 100%;
+    }
+}
+
+/* Authentication forms */
+.auth-container {
+    max-width: 400px;
+    margin: 80px auto;
+    padding: 40px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.auth-container h2 {
+    margin-bottom: 30px;
+}
+
+.auth-container input[type="text"],
+.auth-container input[type="password"] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    box-sizing: border-box;
+}
+
+.auth-container button {
+    width: 100%;
+    background-color: #4a90e2;
+    color: #fff;
+    padding: 14px 20px;
+    margin-top: 20px;
+    border: none;
+    cursor: pointer;
+}
+
+.auth-container button:hover {
+    background-color: #357ab7;
+}
+
+.auth-container p {
+    margin-top: 20px;
+}
+
+.auth-container a {
+    color: #4a90e2;
 }

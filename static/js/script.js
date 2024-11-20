@@ -1,3 +1,11 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // Fetch files on page load
+    fetchFiles();
+
+    // Add event listener to the upload button
+    document.getElementById('uploadBtn').addEventListener('click', uploadFile);
+});
+
 async function sha256(message) {
     // Encode as UTF-8
     const msgBuffer = new TextEncoder().encode(message);
@@ -12,13 +20,15 @@ async function sha256(message) {
 
 async function proofOfWork(challenge, difficulty) {
     let nonce = 0;
-    while (true) {
+    const maxNonce = Number.MAX_SAFE_INTEGER;
+    while (nonce < maxNonce) {
         const hash = await sha256(challenge + nonce);
         if (hash.startsWith('0'.repeat(difficulty))) {
             return nonce.toString();
         }
         nonce++;
     }
+    throw new Error('Proof of Work failed');
 }
 
 async function getChallenge() {
@@ -32,29 +42,39 @@ async function uploadFile() {
     const statusDiv = document.getElementById('status');
     if (fileInput.files.length === 0) {
         statusDiv.textContent = 'Please select a file.';
+        statusDiv.style.color = 'red';
         return;
     }
-    statusDiv.textContent = 'Starting Proof of Work...';
-    const difficulty = 4; // Adjust difficulty as needed
-    const challenge = await getChallenge();
-    const nonce = await proofOfWork(challenge, difficulty);
-    statusDiv.textContent = 'Proof of Work completed. Uploading file...';
+    try {
+        statusDiv.textContent = 'Starting Proof of Work...';
+        statusDiv.style.color = 'black';
+        const difficulty = 4; // Adjust difficulty as needed
+        const challenge = await getChallenge();
+        const nonce = await proofOfWork(challenge, difficulty);
+        statusDiv.textContent = 'Proof of Work completed. Uploading file...';
 
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    formData.append('nonce', nonce);
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('nonce', nonce);
 
-    const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-    });
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
 
-    const result = await response.json();
-    if (response.ok) {
-        statusDiv.textContent = result.message;
-        fetchFiles();  // Refresh the file list
-    } else {
-        statusDiv.textContent = `Error: ${result.message}`;
+        const result = await response.json();
+        if (response.ok) {
+            statusDiv.textContent = result.message;
+            statusDiv.style.color = 'green';
+            fileInput.value = ''; // Clear the file input
+            fetchFiles();  // Refresh the file list
+        } else {
+            statusDiv.textContent = `Error: ${result.message}`;
+            statusDiv.style.color = 'red';
+        }
+    } catch (error) {
+        statusDiv.textContent = `Error: ${error.message}`;
+        statusDiv.style.color = 'red';
     }
 }
 
@@ -76,8 +96,3 @@ async function fetchFiles() {
         });
     }
 }
-
-document.getElementById('uploadBtn').addEventListener('click', uploadFile);
-
-// Fetch files on page load
-window.onload = fetchFiles;

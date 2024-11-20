@@ -4,31 +4,66 @@
     <meta charset="UTF-8">
     <title>JayCloud - Secure Cloud Storage</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome to JayCloud</h1>
-        <p>Securely upload your files with fast deduplication and encryption.</p>
-        <div class="upload-section">
-            <input type="file" id="fileInput">
-            <button id="uploadBtn">Upload</button>
-            <div id="status"></div>
+    <header>
+        <div class="container">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="JayCloud Logo" class="logo">
+            <h1>JayCloud</h1>
+            <nav>
+                <ul>
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#upload-section">Upload</a></li>
+                    <li><a href="#files-section">Your Files</a></li>
+                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </nav>
         </div>
-        <div class="files-section">
-            <h2>Your Files</h2>
-            <table id="filesTable">
-                <thead>
-                    <tr>
-                        <th>Filename</th>
-                        <th>Upload Time</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Files will be populated here -->
-                </tbody>
-            </table>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h2>Securely Store and Manage Your Files</h2>
+                <p>Experience fast uploads with encryption and deduplication.</p>
+                <a href="#upload-section" class="btn">Get Started</a>
+            </div>
+        </section>
+
+        <section id="upload-section" class="upload-section">
+            <div class="container">
+                <h2>Upload Your Files</h2>
+                <input type="file" id="fileInput">
+                <button id="uploadBtn">Upload</button>
+                <div id="status"></div>
+            </div>
+        </section>
+
+        <section id="files-section" class="files-section">
+            <div class="container">
+                <h2>Your Files</h2>
+                <table id="filesTable">
+                    <thead>
+                        <tr>
+                            <th>Filename</th>
+                            <th>Upload Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Files will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2023 JayCloud. All rights reserved.</p>
         </div>
-    </div>
+    </footer>
+
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
