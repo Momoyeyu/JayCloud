@@ -29,7 +29,10 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # Allowed file extensions
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {
+    'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp',
+    'c', 'cpp', 'py', 'rb', 'go', 'kt', 'java', 'js', 'html', 'css', 'php', 'cs', 'swift', 'rs', 'ts', 'sh', 'bat'
+}
 
 def allowed_file(filename):
     """Check if the file has an allowed extension."""
@@ -102,7 +105,7 @@ def register():
             flash('Username already exists. Please choose a different one.')
             return redirect(url_for('register'))
         # Create new user
-        hashed_password = generate_password_hash(password)  # Corrected line
+        hashed_password = generate_password_hash(password)
         new_user = User(username=username, password=hashed_password)
         db.session.add(new_user)
         db.session.commit()
@@ -121,7 +124,7 @@ def login():
         if user and check_password_hash(user.password, password):
             login_user(user)
             flash('Login successful!')
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
         else:
             flash('Invalid username or password.')
             return redirect(url_for('login'))
@@ -133,7 +136,7 @@ def logout():
     """User logout."""
     logout_user()
     flash('You have been logged out.')
-    return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
 @app.route('/api/get_challenge', methods=['GET'])
 @login_required
@@ -202,9 +205,16 @@ def list_files():
     return jsonify({'status': 'success', 'files': files_data})
 
 @app.route('/', methods=['GET'])
-@login_required
 def index():
-    """Render the main page."""
+    """Render the home page."""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return render_template('home.html')
+
+@app.route('/dashboard', methods=['GET'])
+@login_required
+def dashboard():
+    """Render the main dashboard page."""
     return render_template('index.html')
 
 if __name__ == '__main__':

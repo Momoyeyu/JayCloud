@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to JayCloud</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.webp') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <img src="{{ url_for('static', filename='images/logo.webp') }}" alt="JayCloud Logo" class="logo">
+            <h1>JayCloud</h1>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('login') }}">Login</a></li>
+                    <li><a href="{{ url_for('register') }}">Register</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h2>Secure Cloud Storage</h2>
+                <p>Safely store and manage your files with encryption and deduplication.</p>
+                <a href="{{ url_for('register') }}" class="btn">Get Started</a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2023 JayCloud. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

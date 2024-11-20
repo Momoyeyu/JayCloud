@@ -28,6 +28,9 @@ header .container {
 
 .logo {
     height: 50px;
+    width: 50px; /* 确保宽高相等 */
+    border-radius: 50%;
+    overflow: hidden;
 }
 
 nav ul {

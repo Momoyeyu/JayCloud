@@ -1,3 +1,4 @@
-instance/jaycloud.db
 .idea
 jaycloud.db
+/test/
+/instance/
