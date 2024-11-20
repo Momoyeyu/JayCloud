@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, session, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, request, session, jsonify, redirect, url_for, flash, send_file, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
-from flask_migrate import Migrate  # Import Flask-Migrate
+from flask_wtf.csrf import CSRFProtect
 import os
 import hashlib
 import secrets
@@ -12,18 +12,20 @@ from Crypto.Hash import SHA256
 from Crypto import Random
 
 app = Flask(__name__)
-app.secret_key = 'momoyeyu'  # Replace with your actual secret key
+app.secret_key = 'your_secret_key'  # Replace with your actual secret key
 
 # Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///jaycloud.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)  # Initialize Flask-Migrate
 
 # Initialize Login Manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+# Initialize CSRF Protection
+csrf = CSRFProtect(app)
 
 # Configure upload folder
 UPLOAD_FOLDER = 'uploads'
@@ -33,7 +35,8 @@ if not os.path.exists(UPLOAD_FOLDER):
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {
     'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp',
-    'c', 'cpp', 'py', 'rb', 'go', 'kt', 'java', 'js', 'html', 'css', 'php', 'cs', 'swift', 'rs', 'ts', 'sh', 'bat'
+    'c', 'cpp', 'py', 'rb', 'go', 'kt', 'java', 'js', 'html', 'css',
+    'php', 'cs', 'swift', 'rs', 'ts', 'sh', 'bat'
 }
 
 def allowed_file(filename):
@@ -132,7 +135,7 @@ def login():
             return redirect(url_for('login'))
     return render_template('login.html')
 
-@app.route('/logout')
+@app.route('/logout', methods=['POST'])
 @login_required
 def logout():
     """User logout."""
@@ -140,6 +143,7 @@ def logout():
     flash('You have been logged out.')
     return redirect(url_for('index'))
 
+@csrf.exempt
 @app.route('/api/get_challenge', methods=['GET'])
 @login_required
 def get_challenge():
@@ -150,6 +154,7 @@ def get_challenge():
     challenge = generate_challenge()
     return jsonify({'challenge': challenge})
 
+@csrf.exempt
 @app.route('/api/upload', methods=['POST'])
 @login_required
 def upload_file():
@@ -200,11 +205,48 @@ def list_files():
     """
     files = File.query.filter_by(user_id=current_user.id).order_by(File.upload_time.desc()).all()
     files_data = [{
+        'id': file.id,
         'filename': file.filename,
         'file_hash': file.file_hash,
         'upload_time': file.upload_time.strftime('%Y-%m-%d %H:%M:%S')
     } for file in files]
     return jsonify({'status': 'success', 'files': files_data})
+
+@app.route('/download/<int:file_id>', methods=['GET'])
+@login_required
+def download_file(file_id):
+    """Allow users to download their files."""
+    file = File.query.filter_by(id=file_id, user_id=current_user.id).first()
+    if file:
+        file_path = os.path.join(UPLOAD_FOLDER, file.file_hash)
+        if os.path.exists(file_path):
+            # Decryption logic can be added here if necessary
+            return send_file(file_path, as_attachment=True, download_name=file.filename)
+        else:
+            abort(404)
+    else:
+        abort(403)  # Forbidden
+
+@csrf.exempt
+@app.route('/delete/<int:file_id>', methods=['POST'])
+@login_required
+def delete_file(file_id):
+    """Allow users to delete their files."""
+    file = File.query.filter_by(id=file_id, user_id=current_user.id).first()
+    if file:
+        file_path = os.path.join(UPLOAD_FOLDER, file.file_hash)
+        # Remove the file record from the database
+        db.session.delete(file)
+        db.session.commit()
+        # Check if other users are using the same file
+        other_users_with_file = File.query.filter_by(file_hash=file.file_hash).count()
+        if other_users_with_file == 0:
+            # No other users have this file, so we can delete it from storage
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        return jsonify({'status': 'success', 'message': 'File deleted successfully!'})
+    else:
+        return jsonify({'status': 'error', 'message': 'File not found or access denied.'}), 403
 
 @app.route('/', methods=['GET'])
 def index():

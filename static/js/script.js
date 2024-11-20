@@ -37,6 +37,10 @@ async function getChallenge() {
     return data.challenge;
 }
 
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
+
 async function uploadFile() {
     const fileInput = document.getElementById('fileInput');
     const statusDiv = document.getElementById('status');
@@ -57,8 +61,13 @@ async function uploadFile() {
         formData.append('file', fileInput.files[0]);
         formData.append('nonce', nonce);
 
+        const csrfToken = getCSRFToken();
+
         const response = await fetch('/api/upload', {
             method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
             body: formData
         });
 
@@ -86,12 +95,53 @@ async function fetchFiles() {
         filesTableBody.innerHTML = '';  // Clear existing rows
         data.files.forEach(file => {
             const row = document.createElement('tr');
+
             const filenameCell = document.createElement('td');
             filenameCell.textContent = file.filename;
+
             const uploadTimeCell = document.createElement('td');
             uploadTimeCell.textContent = file.upload_time;
+
+            const actionsCell = document.createElement('td');
+
+            // Download button
+            const downloadBtn = document.createElement('button');
+            downloadBtn.textContent = 'Download';
+            downloadBtn.className = 'action-btn download-btn';
+            downloadBtn.addEventListener('click', () => {
+                window.location.href = `/download/${file.id}`;
+            });
+
+            // Delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.className = 'action-btn delete-btn';
+            deleteBtn.addEventListener('click', async () => {
+                if (confirm('Are you sure you want to delete this file?')) {
+                    const csrfToken = getCSRFToken();
+                    const response = await fetch(`/delete/${file.id}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                        }
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        alert(result.message);
+                        fetchFiles();  // Refresh the file list
+                    } else {
+                        alert(`Error: ${result.message}`);
+                    }
+                }
+            });
+
+            actionsCell.appendChild(downloadBtn);
+            actionsCell.appendChild(deleteBtn);
+
             row.appendChild(filenameCell);
             row.appendChild(uploadTimeCell);
+            row.appendChild(actionsCell);
+
             filesTableBody.appendChild(row);
         });
     }

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>JayCloud - Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='images/logo.webp') }}">
@@ -16,7 +17,12 @@
                     <li><a href="{{ url_for('dashboard') }}">Home</a></li>
                     <li><a href="#upload-section">Upload</a></li>
                     <li><a href="#files-section">Your Files</a></li>
-                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                    <li>
+                        <form action="{{ url_for('logout') }}" method="post" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="logout-btn">Logout</button>
+                        </form>
+                    </li>
                 </ul>
             </nav>
         </div>
@@ -51,6 +57,7 @@
                         <tr>
                             <th>Filename</th>
                             <th>Upload Time</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
