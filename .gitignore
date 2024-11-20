@@ -2,3 +2,6 @@
 jaycloud.db
 /test/
 /instance/
+/migrations/
+/__pycache__/
+/uploads/

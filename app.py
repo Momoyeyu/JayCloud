@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, session, jsonify, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
+from flask_migrate import Migrate  # Import Flask-Migrate
 import os
 import hashlib
 import secrets
@@ -11,12 +12,13 @@ from Crypto.Hash import SHA256
 from Crypto import Random
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Replace with your actual secret key
+app.secret_key = 'momoyeyu'  # Replace with your actual secret key
 
 # Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///jaycloud.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)  # Initialize Flask-Migrate
 
 # Initialize Login Manager
 login_manager = LoginManager()
