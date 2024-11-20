@@ -5,10 +5,26 @@
     box-sizing: border-box;
 }
 
+html, body {
+    height: 100%;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f5f7fa;
     color: #333;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Main content should flex-grow to fill available space */
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center content horizontally */
+    width: 100%;
 }
 
 /* Header styling */
@@ -28,9 +44,6 @@ header .container {
 
 .logo {
     height: 50px;
-    width: 50px; /* 确保宽高相等 */
-    border-radius: 50%;
-    overflow: hidden;
 }
 
 nav ul {
@@ -57,6 +70,7 @@ nav a:hover {
     background-color: #e9eef5;
     padding: 60px 0;
     text-align: center;
+    width: 100%;
 }
 
 .hero h2 {
@@ -87,6 +101,7 @@ nav a:hover {
     padding: 60px 0;
     background-color: #fff;
     text-align: center;
+    width: 100%;
 }
 
 .upload-section h2 {
@@ -107,6 +122,7 @@ nav a:hover {
 .files-section {
     padding: 60px 0;
     background-color: #f9fafc;
+    width: 100%;
 }
 
 .files-section h2 {
@@ -145,6 +161,7 @@ footer {
     color: #fff;
     padding: 20px 0;
     text-align: center;
+    width: 100%;
 }
 
 /* Responsive styling */
