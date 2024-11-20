@@ -209,3 +209,60 @@ footer {
 .auth-container a {
     color: #4a90e2;
 }
+
+/* Flash messages */
+.flash-messages {
+    background-color: #ffdddd;
+    border-left: 6px solid #f44336;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.flash-messages p {
+    margin: 0;
+}
+
+/* Authentication forms */
+.auth-container {
+    max-width: 400px;
+    margin: 80px auto;
+    padding: 40px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.auth-container h2 {
+    margin-bottom: 30px;
+}
+
+.auth-container input[type="text"],
+.auth-container input[type="password"] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    box-sizing: border-box;
+}
+
+.auth-container button {
+    width: 100%;
+    background-color: #4a90e2;
+    color: #fff;
+    padding: 14px 20px;
+    margin-top: 20px;
+    border: none;
+    cursor: pointer;
+}
+
+.auth-container button:hover {
+    background-color: #357ab7;
+}
+
+.auth-container p {
+    margin-top: 20px;
+}
+
+.auth-container a {
+    color: #4a90e2;
+}

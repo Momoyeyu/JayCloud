@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <title>JayCloud - Secure Cloud Storage</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.webp') }}">
 </head>
 <body>
     <header>
         <div class="container">
-            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="JayCloud Logo" class="logo">
+            <img src="{{ url_for('static', filename='images/logo.webp') }}" alt="JayCloud Logo" class="logo">
             <h1>JayCloud</h1>
             <nav>
                 <ul>
@@ -23,14 +23,16 @@
     </header>
 
     <main>
+        <!-- Hero Section -->
         <section class="hero">
             <div class="container">
-                <h2>Securely Store and Manage Your Files</h2>
-                <p>Experience fast uploads with encryption and deduplication.</p>
+                <h2>Welcome, {{ current_user.username }}!</h2>
+                <p>Securely store and manage your files.</p>
                 <a href="#upload-section" class="btn">Get Started</a>
             </div>
         </section>
 
+        <!-- Upload Section -->
         <section id="upload-section" class="upload-section">
             <div class="container">
                 <h2>Upload Your Files</h2>
@@ -40,6 +42,7 @@
             </div>
         </section>
 
+        <!-- Files Section -->
         <section id="files-section" class="files-section">
             <div class="container">
                 <h2>Your Files</h2>
