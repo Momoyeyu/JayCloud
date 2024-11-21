@@ -1,3 +1,5 @@
+![logo](static/images/logo.webp)
+
 # JayCloud
 
 JayCloud is a secure and efficient cloud storage prototype system that provides users with features such as instant file transmission, enhanced Proof of Work (PoW) mechanisms to prevent system abuse, and encrypted file deduplication for optimized storage utilization.
@@ -99,12 +101,6 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 ---
 
-Developed by **[Your Name/Team Name]** as part of the "Big Data Security" research experiment at Beijing University of Posts and Telecommunications.
+Developed by **Momoyeyu** as part of the "Big Data Security" research experiment at Beijing University of Posts and Telecommunications.
 ```
 
-### Next Steps:
-1. Replace placeholders like `[Your Name/Team Name]` and the GitHub repository URL with your information.
-2. Add the required `requirements.txt` file listing all dependencies for your project.
-3. Consider including screenshots or GIFs in the `README.md` to showcase the application. 
-
-Let me know if you'd like help with any specific sections!
