@@ -208,7 +208,7 @@ def list_files():
         'id': file.id,
         'filename': file.filename,
         'file_hash': file.file_hash,
-        'upload_time': file.upload_time.strftime('%Y-%m-%d %H:%M:%S')
+        'upload_time': file.upload_time.isoformat() + 'Z'  # ISO format with 'Z' to indicate UTC
     } for file in files]
     return jsonify({'status': 'success', 'files': files_data})
 

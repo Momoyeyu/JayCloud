@@ -34,10 +34,25 @@ function displaySelectedFiles() {
     filesToUpload.forEach((file, index) => {
         const listItem = document.createElement('li');
         listItem.textContent = `${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+
+        // Optional: Add a remove button for each file
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remove';
+        removeBtn.className = 'remove-btn';
+        removeBtn.addEventListener('click', () => {
+            removeFile(index);
+        });
+
+        listItem.appendChild(removeBtn);
         list.appendChild(listItem);
     });
 
     selectedFilesDiv.appendChild(list);
+}
+
+function removeFile(index) {
+    filesToUpload.splice(index, 1);
+    displaySelectedFiles();
 }
 
 async function uploadFiles() {
@@ -89,10 +104,10 @@ async function uploadFiles() {
 
         const result = await response.json();
         if (response.ok) {
-            statusDiv.textContent = result.message;
+            statusDiv.textContent = `File "${file.name}" uploaded successfully.`;
             statusDiv.style.color = 'green';
         } else {
-            statusDiv.textContent = `Error: ${result.message}`;
+            statusDiv.textContent = `Error uploading "${file.name}": ${result.message}`;
             statusDiv.style.color = 'red';
         }
     }
@@ -175,7 +190,10 @@ async function fetchFiles() {
             filenameCell.textContent = file.filename;
 
             const uploadTimeCell = document.createElement('td');
-            uploadTimeCell.textContent = file.upload_time;
+            // Parse the ISO time string and convert to local time
+            const date = new Date(file.upload_time);
+            const localTimeString = date.toLocaleString();  // Formats date according to user's locale
+            uploadTimeCell.textContent = localTimeString;
 
             const actionsCell = document.createElement('td');
 
