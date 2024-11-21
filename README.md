@@ -1,8 +1,8 @@
-![logo](static/images/logo.webp)
-
 # JayCloud
 
 JayCloud is a secure and efficient cloud storage prototype system that provides users with features such as instant file transmission, enhanced Proof of Work (PoW) mechanisms to prevent system abuse, and encrypted file deduplication for optimized storage utilization.
+
+![logo](static/images/logo.webp)
 
 ## Features
 
@@ -102,5 +102,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 ---
 
 Developed by **Momoyeyu** as part of the "Big Data Security" research experiment at Beijing University of Posts and Telecommunications.
-```
 
