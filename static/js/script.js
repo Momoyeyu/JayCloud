@@ -17,8 +17,17 @@ let filesToUpload = [];
 
 function handleFileSelection(event) {
     const files = event.target.files;
-    filesToUpload = Array.from(files);
+    // Append new files to filesToUpload, avoiding duplicates
+    for (const file of files) {
+        // Check if the file is already in the filesToUpload array
+        const exists = filesToUpload.some(f => f.name === file.name && f.lastModified === file.lastModified && f.size === file.size);
+        if (!exists) {
+            filesToUpload.push(file);
+        }
+    }
     displaySelectedFiles();
+    // Clear the file input to allow selecting the same file again if needed
+    event.target.value = '';
 }
 
 function displaySelectedFiles() {
@@ -35,7 +44,7 @@ function displaySelectedFiles() {
         const listItem = document.createElement('li');
         listItem.textContent = `${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
 
-        // Optional: Add a remove button for each file
+        // Add a remove button for each file
         const removeBtn = document.createElement('button');
         removeBtn.textContent = 'Remove';
         removeBtn.className = 'remove-btn';
@@ -67,47 +76,52 @@ async function uploadFiles() {
         statusDiv.textContent = `Processing ${file.name}...`;
         statusDiv.style.color = 'black';
 
-        // Compute file hash
-        const fileHash = await computeFileHash(file);
+        try {
+            // Compute file hash
+            const fileHash = await computeFileHash(file);
 
-        // Check if file exists on server
-        const fileExists = await checkFileExists(fileHash, file.name);
-        if (fileExists === 'exists' || fileExists === 'associated') {
-            statusDiv.textContent = `File "${file.name}" uploaded instantly.`;
-            statusDiv.style.color = 'green';
-            continue;
-        }
+            // Check if file exists on server
+            const fileExists = await checkFileExists(fileHash, file.name);
+            if (fileExists === 'exists' || fileExists === 'associated') {
+                statusDiv.textContent = `File "${file.name}" uploaded instantly.`;
+                statusDiv.style.color = 'green';
+                continue;
+            }
 
-        // Perform PoW
-        statusDiv.textContent = `Performing Proof of Work for "${file.name}"...`;
-        const difficulty = 4; // Adjust as needed
-        const challenge = await getChallenge();
-        const nonce = await proofOfWork(challenge, difficulty);
+            // Perform PoW
+            statusDiv.textContent = `Performing Proof of Work for "${file.name}"...`;
+            const difficulty = 4; // Adjust as needed
+            const challenge = await getChallenge();
+            const nonce = await proofOfWork(challenge, difficulty);
 
-        // Upload file
-        statusDiv.textContent = `Uploading "${file.name}"...`;
+            // Upload file
+            statusDiv.textContent = `Uploading "${file.name}"...`;
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('nonce', nonce);
-        formData.append('file_hash', fileHash);
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('nonce', nonce);
+            formData.append('file_hash', fileHash);
 
-        const csrfToken = getCSRFToken();
+            const csrfToken = getCSRFToken();
 
-        const response = await fetch('/api/upload', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken
-            },
-            body: formData
-        });
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
 
-        const result = await response.json();
-        if (response.ok) {
-            statusDiv.textContent = `File "${file.name}" uploaded successfully.`;
-            statusDiv.style.color = 'green';
-        } else {
-            statusDiv.textContent = `Error uploading "${file.name}": ${result.message}`;
+            const result = await response.json();
+            if (response.ok) {
+                statusDiv.textContent = `File "${file.name}" uploaded successfully.`;
+                statusDiv.style.color = 'green';
+            } else {
+                statusDiv.textContent = `Error uploading "${file.name}": ${result.message}`;
+                statusDiv.style.color = 'red';
+            }
+        } catch (error) {
+            statusDiv.textContent = `Error processing "${file.name}": ${error.message}`;
             statusDiv.style.color = 'red';
         }
     }

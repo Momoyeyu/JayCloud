@@ -337,3 +337,19 @@ footer {
     margin-bottom: 5px;
     border-radius: 5px;
 }
+
+/* Remove button in selected files list */
+.remove-btn {
+    margin-left: 10px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    background-color: #e74c3c;
+    color: white;
+}
+
+.remove-btn:hover {
+    background-color: #c0392b;
+}
