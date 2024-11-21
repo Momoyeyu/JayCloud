@@ -45,11 +45,12 @@
                 <h2>Upload Your Files</h2>
                 <div class="upload-container">
                     <label for="fileInput" class="custom-file-upload">
-                        <i class="fa fa-cloud-upload"></i> Select File
+                        <i class="fas fa-cloud-upload-alt"></i> Select File(s)
                     </label>
-                    <input type="file" id="fileInput">
-                    <button id="uploadBtn" class="btn upload-btn">Upload</button>
+                    <input type="file" id="fileInput" multiple>
+                    <button id="uploadBtn" class="upload-btn">Upload</button>
                 </div>
+                <div id="selectedFiles"></div>
                 <div id="status"></div>
             </div>
         </section>

@@ -44,14 +44,6 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def calculate_hash(file_stream):
-    """Calculate SHA-256 hash of the file content."""
-    hasher = hashlib.sha256()
-    for chunk in iter(lambda: file_stream.read(4096), b""):
-        hasher.update(chunk)
-    file_stream.seek(0)  # Reset file stream position
-    return hasher.hexdigest()
-
 def generate_challenge():
     """Generate a new challenge for Proof of Work."""
     challenge = secrets.token_hex(16)
@@ -64,31 +56,29 @@ def verify_pow(challenge, nonce, difficulty=4):
     hash_result = hashlib.sha256(combined).hexdigest()
     return hash_result.startswith('0' * difficulty)
 
-def convergent_encrypt(file_stream):
+def convergent_encrypt(data):
     """Encrypt the file using convergent encryption."""
-    data = file_stream.read()
     key = SHA256.new(data).digest()  # Key derived from file content
     iv = Random.new().read(AES.block_size)
     cipher = AES.new(key, AES.MODE_CFB, iv)
     encrypted_data = iv + cipher.encrypt(data)
-    file_stream.seek(0)  # Reset file stream position
     return encrypted_data
 
 # Database models
 class User(UserMixin, db.Model):
     """Database model for users."""
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), nullable=False, unique=True)
-    password = db.Column(db.String(150), nullable=False)
-    files = db.relationship('File', backref='owner', lazy=True)
+    username = db.Column(db.String(150), nullable=False, unique=True)  # 用户名
+    password = db.Column(db.String(150), nullable=False)  # 密码
+    files = db.relationship('File', backref='owner', lazy=True)  # 关联文件
 
 class File(db.Model):
     """Database model for uploaded files."""
     id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(256))
-    file_hash = db.Column(db.String(64), nullable=False)
-    upload_time = db.Column(db.DateTime, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    filename = db.Column(db.String(256))  # 文件名
+    file_hash = db.Column(db.String(64), nullable=False)  # 文件哈希
+    upload_time = db.Column(db.DateTime, default=datetime.utcnow)  # 上传时间
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 所属用户
 
     def __repr__(self):
         return f'<File {self.filename}>'
@@ -102,107 +92,117 @@ def load_user(user_id):
 def register():
     """User registration page."""
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form['username']  # 获取用户名
+        password = request.form['password']  # 获取密码
         # Check if user already exists
-        existing_user = User.query.filter_by(username=username).first()
+        existing_user = User.query.filter_by(username=username).first()  # 检查用户是否存在
         if existing_user:
-            flash('Username already exists. Please choose a different one.')
+            flash('Username already exists. Please choose a different one.')  # 提示用户名已存在
             return redirect(url_for('register'))
         # Create new user
-        hashed_password = generate_password_hash(password)
-        new_user = User(username=username, password=hashed_password)
+        hashed_password = generate_password_hash(password)  # 哈希密码
+        new_user = User(username=username, password=hashed_password)  # 创建新用户
         db.session.add(new_user)
         db.session.commit()
-        flash('Registration successful! Please log in.')
+        flash('Registration successful! Please log in.')  # 提示注册成功
         return redirect(url_for('login'))
-    return render_template('register.html')
+    return render_template('register.html')  # 渲染注册页面
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """User login page."""
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form['username']  # 获取用户名
+        password = request.form['password']  # 获取密码
         # Authenticate user
-        user = User.query.filter_by(username=username).first()
-        if user and check_password_hash(user.password, password):
-            login_user(user)
-            flash('Login successful!')
+        user = User.query.filter_by(username=username).first()  # 查询用户
+        if user and check_password_hash(user.password, password):  # 验证密码
+            login_user(user)  # 登录用户
+            flash('Login successful!')  # 提示登录成功
             return redirect(url_for('dashboard'))
         else:
-            flash('Invalid username or password.')
+            flash('Invalid username or password.')  # 提示登录失败
             return redirect(url_for('login'))
-    return render_template('login.html')
+    return render_template('login.html')  # 渲染登录页面
 
 @app.route('/logout', methods=['POST'])
 @login_required
 def logout():
     """User logout."""
-    logout_user()
-    flash('You have been logged out.')
+    logout_user()  # 注销用户
+    flash('You have been logged out.')  # 提示注销成功
     return redirect(url_for('index'))
 
-@csrf.exempt
 @app.route('/api/get_challenge', methods=['GET'])
 @login_required
-def get_challenge():
-    """
-    API Endpoint: Get a new challenge for Proof of Work.
-    Returns a JSON object containing the challenge.
-    """
+def get_challenge_endpoint():
+    """API Endpoint: Get a new challenge for Proof of Work."""
     challenge = generate_challenge()
     return jsonify({'challenge': challenge})
 
-@csrf.exempt
+@app.route('/api/check_file', methods=['POST'])
+@login_required
+def check_file():
+    """API Endpoint: Check if a file with the given hash exists."""
+    data = request.get_json()
+    file_hash = data.get('file_hash')
+    filename = data.get('filename')
+    if not file_hash or not filename:
+        return jsonify({'status': 'error', 'message': 'Missing file hash or filename.'}), 400
+    # Check if the file exists on the server
+    file_path = os.path.join(UPLOAD_FOLDER, file_hash)
+    if os.path.exists(file_path):
+        # Check if the user already has this file
+        existing_file = File.query.filter_by(file_hash=file_hash, user_id=current_user.id).first()
+        if existing_file:
+            return jsonify({'status': 'exists', 'message': 'File already exists in your account.'})
+        else:
+            # Associate the file with the user
+            new_file = File(filename=filename, file_hash=file_hash, user_id=current_user.id)
+            db.session.add(new_file)
+            db.session.commit()
+            return jsonify({'status': 'associated', 'message': 'File associated with your account.'})
+    else:
+        return jsonify({'status': 'not_exists', 'message': 'File does not exist on the server.'})
+
 @app.route('/api/upload', methods=['POST'])
 @login_required
 def upload_file():
-    """
-    API Endpoint: Handle file uploads.
-    Expects 'file' in form-data and 'nonce' in form-data.
-    Performs Proof of Work verification and encrypted deduplication.
-    """
+    """Handle file uploads with PoW and deduplication."""
     nonce = request.form.get('nonce')
     challenge = session.get('challenge')
     if not challenge or not nonce or not verify_pow(challenge, nonce):
         return jsonify({'status': 'error', 'message': 'PoW verification failed'}), 400
-    # Clear the used challenge
     session.pop('challenge', None)
     uploaded_file = request.files.get('file')
+    file_hash = request.form.get('file_hash')
+    if not file_hash or not uploaded_file:
+        return jsonify({'status': 'error', 'message': 'Missing file hash or file.'}), 400
     if uploaded_file and allowed_file(uploaded_file.filename):
-        encrypted_data = convergent_encrypt(uploaded_file.stream)
-        file_hash = hashlib.sha256(encrypted_data).hexdigest()
+        # Read raw file data
+        file_data = uploaded_file.read()
+        server_file_hash = hashlib.sha256(file_data).hexdigest()
+        if server_file_hash != file_hash:
+            return jsonify({'status': 'error', 'message': 'File hash mismatch.'}), 400
+        # Encrypt the file data
+        encrypted_data = convergent_encrypt(file_data)
         file_path = os.path.join(UPLOAD_FOLDER, file_hash)
-        if os.path.exists(file_path):
-            # File already exists; check if user has uploaded it before
-            existing_file = File.query.filter_by(file_hash=file_hash, user_id=current_user.id).first()
-            if existing_file:
-                return jsonify({'status': 'success', 'message': 'File already exists in your account. Fast upload successful!'})
-            else:
-                # Associate existing file with user
-                new_file = File(filename=uploaded_file.filename, file_hash=file_hash, user_id=current_user.id)
-                db.session.add(new_file)
-                db.session.commit()
-                return jsonify({'status': 'success', 'message': 'File uploaded and associated with your account!'})
-        else:
+        if not os.path.exists(file_path):
+            # Save the encrypted file
             with open(file_path, 'wb') as f:
                 f.write(encrypted_data)
-            # Add file metadata to the database
-            new_file = File(filename=uploaded_file.filename, file_hash=file_hash, user_id=current_user.id)
-            db.session.add(new_file)
-            db.session.commit()
-            return jsonify({'status': 'success', 'message': 'File uploaded and encrypted successfully!'})
+        # Add file metadata to the database
+        new_file = File(filename=uploaded_file.filename, file_hash=file_hash, user_id=current_user.id)
+        db.session.add(new_file)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'File uploaded and encrypted successfully!'})
     else:
         return jsonify({'status': 'error', 'message': 'Invalid file or file type'}), 400
 
 @app.route('/files', methods=['GET'])
 @login_required
 def list_files():
-    """
-    API Endpoint: List all uploaded files for the current user.
-    Returns a JSON object containing file metadata.
-    """
+    """API Endpoint: List all uploaded files for the current user."""
     files = File.query.filter_by(user_id=current_user.id).order_by(File.upload_time.desc()).all()
     files_data = [{
         'id': file.id,
@@ -221,13 +221,16 @@ def download_file(file_id):
         file_path = os.path.join(UPLOAD_FOLDER, file.file_hash)
         if os.path.exists(file_path):
             # Decryption logic can be added here if necessary
-            return send_file(file_path, as_attachment=True, download_name=file.filename)
+            return send_file(
+                file_path,
+                as_attachment=True,
+                download_name=file.filename
+            )
         else:
             abort(404)
     else:
         abort(403)  # Forbidden
 
-@csrf.exempt
 @app.route('/delete/<int:file_id>', methods=['POST'])
 @login_required
 def delete_file(file_id):

@@ -3,63 +3,79 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchFiles();
 
     // Add event listener to the upload button
-    document.getElementById('uploadBtn').addEventListener('click', uploadFile);
+    document.getElementById('uploadBtn').addEventListener('click', uploadFiles);
+
+    // Add event listener to the file input
+    document.getElementById('fileInput').addEventListener('change', handleFileSelection);
 });
-
-async function sha256(message) {
-    // Encode as UTF-8
-    const msgBuffer = new TextEncoder().encode(message);
-    // Hash the message
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    // Convert ArrayBuffer to Array
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    // Convert bytes to hex string
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return hashHex;
-}
-
-async function proofOfWork(challenge, difficulty) {
-    let nonce = 0;
-    const maxNonce = Number.MAX_SAFE_INTEGER;
-    while (nonce < maxNonce) {
-        const hash = await sha256(challenge + nonce);
-        if (hash.startsWith('0'.repeat(difficulty))) {
-            return nonce.toString();
-        }
-        nonce++;
-    }
-    throw new Error('Proof of Work failed');
-}
-
-async function getChallenge() {
-    const response = await fetch('/api/get_challenge');
-    const data = await response.json();
-    return data.challenge;
-}
 
 function getCSRFToken() {
     return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 }
 
-async function uploadFile() {
-    const fileInput = document.getElementById('fileInput');
+let filesToUpload = [];
+
+function handleFileSelection(event) {
+    const files = event.target.files;
+    filesToUpload = Array.from(files);
+    displaySelectedFiles();
+}
+
+function displaySelectedFiles() {
+    const selectedFilesDiv = document.getElementById('selectedFiles');
+    selectedFilesDiv.innerHTML = '';
+
+    if (filesToUpload.length === 0) {
+        selectedFilesDiv.textContent = 'No files selected.';
+        return;
+    }
+
+    const list = document.createElement('ul');
+    filesToUpload.forEach((file, index) => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+        list.appendChild(listItem);
+    });
+
+    selectedFilesDiv.appendChild(list);
+}
+
+async function uploadFiles() {
     const statusDiv = document.getElementById('status');
-    if (fileInput.files.length === 0) {
-        statusDiv.textContent = 'Please select a file.';
+    if (filesToUpload.length === 0) {
+        statusDiv.textContent = 'Please select file(s) to upload.';
         statusDiv.style.color = 'red';
         return;
     }
-    try {
-        statusDiv.textContent = 'Starting Proof of Work...';
+
+    for (const file of filesToUpload) {
+        statusDiv.textContent = `Processing ${file.name}...`;
         statusDiv.style.color = 'black';
-        const difficulty = 4; // Adjust difficulty as needed
+
+        // Compute file hash
+        const fileHash = await computeFileHash(file);
+
+        // Check if file exists on server
+        const fileExists = await checkFileExists(fileHash, file.name);
+        if (fileExists === 'exists' || fileExists === 'associated') {
+            statusDiv.textContent = `File "${file.name}" uploaded instantly.`;
+            statusDiv.style.color = 'green';
+            continue;
+        }
+
+        // Perform PoW
+        statusDiv.textContent = `Performing Proof of Work for "${file.name}"...`;
+        const difficulty = 4; // Adjust as needed
         const challenge = await getChallenge();
         const nonce = await proofOfWork(challenge, difficulty);
-        statusDiv.textContent = 'Proof of Work completed. Uploading file...';
+
+        // Upload file
+        statusDiv.textContent = `Uploading "${file.name}"...`;
 
         const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
+        formData.append('file', file);
         formData.append('nonce', nonce);
+        formData.append('file_hash', fileHash);
 
         const csrfToken = getCSRFToken();
 
@@ -75,16 +91,75 @@ async function uploadFile() {
         if (response.ok) {
             statusDiv.textContent = result.message;
             statusDiv.style.color = 'green';
-            fileInput.value = ''; // Clear the file input
-            fetchFiles();  // Refresh the file list
         } else {
             statusDiv.textContent = `Error: ${result.message}`;
             statusDiv.style.color = 'red';
         }
-    } catch (error) {
-        statusDiv.textContent = `Error: ${error.message}`;
-        statusDiv.style.color = 'red';
     }
+
+    // Clear selected files and refresh file list
+    filesToUpload = [];
+    document.getElementById('fileInput').value = '';
+    displaySelectedFiles();
+    fetchFiles();
+}
+
+async function computeFileHash(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async function (event) {
+            const arrayBuffer = event.target.result;
+            const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            resolve(hashHex);
+        };
+        reader.onerror = function (error) {
+            reject(error);
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+async function checkFileExists(fileHash, filename) {
+    const csrfToken = getCSRFToken();
+    const response = await fetch('/api/check_file', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ file_hash: fileHash, filename: filename })
+    });
+    const result = await response.json();
+    return result.status;
+}
+
+async function getChallenge() {
+    const response = await fetch('/api/get_challenge');
+    const data = await response.json();
+    return data.challenge;
+}
+
+async function proofOfWork(challenge, difficulty) {
+    let nonce = 0;
+    const maxNonce = Number.MAX_SAFE_INTEGER;
+    while (nonce < maxNonce) {
+        const hash = await sha256(challenge + nonce);
+        if (hash.startsWith('0'.repeat(difficulty))) {
+            return nonce.toString();
+        }
+        nonce++;
+    }
+    throw new Error('Proof of Work failed');
+}
+
+async function sha256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
 }
 
 async function fetchFiles() {
