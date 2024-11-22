@@ -10,6 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto import Random
+import io
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with your actual secret key
@@ -56,13 +57,22 @@ def verify_pow(challenge, nonce, difficulty=4):
     hash_result = hashlib.sha256(combined).hexdigest()
     return hash_result.startswith('0' * difficulty)
 
-def convergent_encrypt(data):
+def convergent_encrypt(data, file_hash):
     """Encrypt the file using convergent encryption."""
-    key = SHA256.new(data).digest()  # Key derived from file content
+    key = SHA256.new(file_hash.encode('utf-8')).digest()  # Key derived from file hash
     iv = Random.new().read(AES.block_size)
     cipher = AES.new(key, AES.MODE_CFB, iv)
     encrypted_data = iv + cipher.encrypt(data)
     return encrypted_data
+
+def convergent_decrypt(encrypted_data, file_hash):
+    """Decrypt the file using convergent encryption."""
+    key = SHA256.new(file_hash.encode('utf-8')).digest()  # Key derived from file hash
+    iv = encrypted_data[:AES.block_size]  # Extract IV
+    encrypted_content = encrypted_data[AES.block_size:]
+    cipher = AES.new(key, AES.MODE_CFB, iv)
+    decrypted_data = cipher.decrypt(encrypted_content)
+    return decrypted_data
 
 # Database models
 class User(UserMixin, db.Model):
@@ -184,8 +194,8 @@ def upload_file():
         server_file_hash = hashlib.sha256(file_data).hexdigest()
         if server_file_hash != file_hash:
             return jsonify({'status': 'error', 'message': 'File hash mismatch.'}), 400
-        # Encrypt the file data
-        encrypted_data = convergent_encrypt(file_data)
+        # Encrypt the file data using the file hash as the key
+        encrypted_data = convergent_encrypt(file_data, file_hash)
         file_path = os.path.join(UPLOAD_FOLDER, file_hash)
         if not os.path.exists(file_path):
             # Save the encrypted file
@@ -220,9 +230,14 @@ def download_file(file_id):
     if file:
         file_path = os.path.join(UPLOAD_FOLDER, file.file_hash)
         if os.path.exists(file_path):
-            # Decryption logic can be added here if necessary
+            # Read encrypted data
+            with open(file_path, 'rb') as f:
+                encrypted_data = f.read()
+            # Decrypt the data using the file hash
+            decrypted_data = convergent_decrypt(encrypted_data, file.file_hash)
+            # Send the decrypted file to the client
             return send_file(
-                file_path,
+                io.BytesIO(decrypted_data),
                 as_attachment=True,
                 download_name=file.filename
             )
@@ -230,6 +245,7 @@ def download_file(file_id):
             abort(404)
     else:
         abort(403)  # Forbidden
+
 
 @app.route('/delete/<int:file_id>', methods=['POST'])
 @login_required
