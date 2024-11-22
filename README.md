@@ -101,5 +101,7 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 ---
 
-Developed by **Momoyeyu** as part of the "Big Data Security" research experiment at Beijing University of Posts and Telecommunications.
+Developed by **Junjie Su** as part of the "Big Data Security" research experiment at Beijing University of Posts and Telecommunications.
+
+- email: `sujunjie@bupt.edu.cn`
 
