@@ -13,7 +13,7 @@ from Crypto import Random
 import io
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Replace with your actual secret key
+app.secret_key = 'momoyeyu'  # Replace with your actual secret key
 
 # Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///jaycloud.db'
@@ -67,7 +67,7 @@ def convergent_encrypt(data, file_hash):
 
 def convergent_decrypt(encrypted_data, file_hash):
     """Decrypt the file using convergent encryption."""
-    key = SHA256.new(file_hash.encode('utf-8')).digest()  # Key derived from file hash
+    key = hashlib.sha256(file_hash.encode('utf-8')).digest()  # Key derived from file hash
     iv = encrypted_data[:AES.block_size]  # Extract IV
     encrypted_content = encrypted_data[AES.block_size:]
     cipher = AES.new(key, AES.MODE_CFB, iv)
@@ -87,11 +87,41 @@ class File(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(256))  # 文件名
     file_hash = db.Column(db.String(64), nullable=False)  # 文件哈希
+    merkle_root = db.Column(db.String(64), nullable=False)  # Merkle树根哈希
     upload_time = db.Column(db.DateTime, default=datetime.utcnow)  # 上传时间
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 所属用户
 
     def __repr__(self):
         return f'<File {self.filename}>'
+
+def compute_merkle_root(data, chunk_size=1024):
+    """
+    Compute the Merkle Root of the file data.
+    Splits the data into chunks of `chunk_size` bytes, hashes each chunk, and builds the Merkle Tree.
+    Returns the Merkle Root as a hex string.
+    """
+    def hash_chunk(chunk):
+        return hashlib.sha256(chunk).hexdigest()
+
+    def build_merkle_tree(hashes):
+        if len(hashes) == 1:
+            return hashes
+        if len(hashes) % 2 != 0:
+            hashes.append(hashes[-1])  # 复制最后一个哈希以保证数量为偶数
+        new_level = []
+        for i in range(0, len(hashes), 2):
+            combined = hashes[i] + hashes[i+1]
+            new_hash = hashlib.sha256(combined.encode('utf-8')).hexdigest()
+            new_level.append(new_hash)
+        return build_merkle_tree(new_level)
+
+    # 将数据分割为多个块
+    chunks = [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
+    # 对每个块进行哈希
+    chunk_hashes = [hash_chunk(chunk) for chunk in chunks]
+    # 构建Merkle Tree并获取根哈希
+    merkle_root = build_merkle_tree(chunk_hashes)[0] if chunk_hashes else None
+    return merkle_root
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -178,12 +208,12 @@ def check_file():
 @app.route('/api/upload', methods=['POST'])
 @login_required
 def upload_file():
-    """Handle file uploads with PoW and deduplication."""
-    nonce = request.form.get('nonce')
-    challenge = session.get('challenge')
-    if not challenge or not nonce or not verify_pow(challenge, nonce):
-        return jsonify({'status': 'error', 'message': 'PoW verification failed'}), 400
-    session.pop('challenge', None)
+    """Handle file uploads with Proof of Ownership via Merkle Tree."""
+    # nonce = request.form.get('nonce')
+    # challenge = session.get('challenge')
+    # if not challenge or not nonce or not verify_pow(challenge, nonce):
+    #     return jsonify({'status': 'error', 'message': 'PoW verification failed'}), 400
+    # session.pop('challenge', None)
     uploaded_file = request.files.get('file')
     file_hash = request.form.get('file_hash')
     if not file_hash or not uploaded_file:
@@ -194,6 +224,10 @@ def upload_file():
         server_file_hash = hashlib.sha256(file_data).hexdigest()
         if server_file_hash != file_hash:
             return jsonify({'status': 'error', 'message': 'File hash mismatch.'}), 400
+        # 计算Merkle Root
+        merkle_root = compute_merkle_root(file_data)
+        if not merkle_root:
+            return jsonify({'status': 'error', 'message': 'Failed to compute Merkle Root.'}), 400
         # Encrypt the file data using the file hash as the key
         encrypted_data = convergent_encrypt(file_data, file_hash)
         file_path = os.path.join(UPLOAD_FOLDER, file_hash)
@@ -202,10 +236,10 @@ def upload_file():
             with open(file_path, 'wb') as f:
                 f.write(encrypted_data)
         # Add file metadata to the database
-        new_file = File(filename=uploaded_file.filename, file_hash=file_hash, user_id=current_user.id)
+        new_file = File(filename=uploaded_file.filename, file_hash=file_hash, merkle_root=merkle_root, user_id=current_user.id)
         db.session.add(new_file)
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'File uploaded and encrypted successfully!'})
+        return jsonify({'status': 'success', 'message': 'File uploaded and encrypted successfully!', 'merkle_root': merkle_root}), 200
     else:
         return jsonify({'status': 'error', 'message': 'Invalid file or file type'}), 400
 
@@ -218,6 +252,7 @@ def list_files():
         'id': file.id,
         'filename': file.filename,
         'file_hash': file.file_hash,
+        'merkle_root': file.merkle_root,
         'upload_time': file.upload_time.isoformat() + 'Z'  # ISO format with 'Z' to indicate UTC
     } for file in files]
     return jsonify({'status': 'success', 'files': files_data})

@@ -88,18 +88,22 @@ async function uploadFiles() {
                 continue;
             }
 
-            // Perform PoW
-            statusDiv.textContent = `Performing Proof of Work for "${file.name}"...`;
-            const difficulty = 4; // Adjust as needed
-            const challenge = await getChallenge();
-            const nonce = await proofOfWork(challenge, difficulty);
+            // generate Proof of Ownership (Merkle Root)
+            statusDiv.textContent = `Generating Proof of Ownership for "${file.name}"...`;
+            const merkleRoot = await computeMerkleRoot(file);
+
+            // // Perform PoW
+            // statusDiv.textContent = `Performing Proof of Work for "${file.name}"...`;
+            // const difficulty = 4; // Adjust as needed
+            // const challenge = await getChallenge();
+            // const nonce = await proofOfWork(challenge, difficulty);
 
             // Upload file
             statusDiv.textContent = `Uploading "${file.name}"...`;
 
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('nonce', nonce);
+            // formData.append('nonce', nonce);
             formData.append('file_hash', fileHash);
 
             const csrfToken = getCSRFToken();
@@ -131,6 +135,57 @@ async function uploadFiles() {
     document.getElementById('fileInput').value = '';
     displaySelectedFiles();
     fetchFiles();
+}
+
+// 新增函数：计算Merkle Root
+async function computeMerkleRoot(file) {
+    const chunkSize = 1024;  // 每个块的大小（字节）
+    const chunks = [];
+    const fileStream = file.stream();
+    const reader = fileStream.getReader();
+    let done = false;
+
+    while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        if (value) {
+            chunks.push(value);
+        }
+        done = doneReading;
+    }
+
+    // 计算每个块的SHA-256哈希
+    const chunkHashes = chunks.map(chunk => {
+        const hashBuffer = crypto.subtle.digest('SHA-256', chunk);
+        return hashBuffer.then(hash => {
+            const hashArray = Array.from(new Uint8Array(hash));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        });
+    });
+
+    const resolvedHashes = await Promise.all(chunkHashes);
+
+    // 构建Merkle Tree
+    function buildMerkleTree(hashes) {
+        if (hashes.length === 1) {
+            return hashes;
+        }
+        if (hashes.length % 2 !== 0) {
+            hashes.push(hashes[hashes.length - 1]);  // 复制最后一个哈希以保证数量为偶数
+        }
+        const newLevel = [];
+        for (let i = 0; i < hashes.length; i += 2) {
+            const combined = hashes[i] + hashes[i + 1];
+            const newHash = crypto.subtle.digest('SHA-256', new TextEncoder().encode(combined));
+            newLevel.push(newHash.then(hash => {
+                const hashArray = Array.from(new Uint8Array(hash));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            }));
+        }
+        return Promise.all(newLevel).then(buildMerkleTree);
+    }
+
+    const merkleTree = await buildMerkleTree(resolvedHashes);
+    return merkleTree[0];  // 返回Merkle根哈希
 }
 
 async function computeFileHash(file) {
